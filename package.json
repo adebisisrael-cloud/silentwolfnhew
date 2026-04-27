@@ -30,7 +30,7 @@
   },
   "scripts": {
     "postinstall": "node scripts/patch-modules.cjs 2>/dev/null || true",
-    "start": "node --no-warnings --expose-gc --max-old-space-size=1024 --max-semi-space-size=64 index.js",
+    "start": "node --no-warnings index.js"
     "deploy": "node restart.js",
     "auto": "node auto_restart.js",
     "bot": "node --no-warnings index.js",
