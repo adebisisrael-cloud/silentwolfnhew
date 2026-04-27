@@ -1,10 +1,9 @@
 // Inner Peace -- Silent Wolf.
-
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 
-// Define __dirname for ESM
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -17,24 +16,29 @@ async function startBot() {
             process.exit(1);
         }
 
-        const botSource = fs.readFileSync(wolfPath, 'utf8');
+        let botSource = fs.readFileSync(wolfPath, 'utf8');
         
-        // Patching the source to handle require context in ESM
-        const patchedSource = botSource.replace(
+        // This handles the obfuscated require logic inside wolf.js
+        botSource = botSource.replace(
             /createRequire\(\[([^\]]+)\]/g,
-            'createRequire(import.meta.url'
+            'createRequire(import.meta.url)'
         );
 
-        // Using a .mjs extension ensures Node treats the temp file as a module
-        const tmpBot = path.join(__dirname, '.bot_run.mjs');
-        fs.writeFileSync(tmpBot, patchedSource);
+        // This fixes the "require of ES Module node:url" error specifically
+        botSource = botSource.replace(/require\(['"]node:url['"]\)/g, '(await import("node:url")).default || await import("node:url")');
+        botSource = botSource.replace(/require\(['"]url['"]\)/g, '(await import("url")).default || await import("url")');
 
-        console.log("🐺 WOLFBOT: Patching source and starting...");
+        const tmpBot = path.join(__dirname, '.bot_run.mjs');
+        fs.writeFileSync(tmpBot, botSource);
+
+        console.log("🐺 WOLFBOT: Running patched source...");
         
-        await import(`./.bot_run.mjs?update=${Date.now()}`);
+        // The timestamp prevents Node from loading a cached/broken version
+        await import(`./.bot_run.mjs?v=${Date.now()}`);
         
     } catch (error) {
         console.error("⚠️ Startup Error:", error);
+        // If it still fails, it might be a dependency version issue in package.json
     }
 }
 
